@@ -1,0 +1,839 @@
+---
+title: "Appendix of Healthcare HW2"
+author: "Written by Zhiqi Chen, Nkosingiphile Shongwe, Salil Redkar, Debarati Mazumdar, Lakshmi Malavika Andavilli"
+date: "2/10/2019"
+output: word_document
+---
+
+## Quetion 1
+
+```{r message=FALSE}
+library(readr)
+library(readxl)
+library(dplyr)
+library(stringr)
+# Monthly Enrollment by Contract/Plan/State/County
+MEC <- read_csv("CPSC_Enrollment_Info_2019_01.csv")
+# Monthly Enrollment by Plan
+MEP <- read_csv("Monthly_Report_By_Plan_2019_01.csv")
+# Major Insurance Organization Name
+MIO <- read_excel("MajorInsuranceOrgs.xlsx")
+# HEDIS Measures for Opioids Prescription
+EOC <- read_excel("EOC170.xlsx")
+# PDP Dental Data
+PDP <- read.delim("pbp_b16_dental.txt")
+```
+
+```{r}
+MEC1 = MEC %>%
+  filter(str_detect(`Contract Number`, paste(c("H", "R", "E"), collapse = "|"))) %>%
+  filter(`Enrollment` != "*") %>%
+  filter(`State` == "CA" | `State` == "OH" | `State` == "WA" | `State` == "MD" | `State` == "LA" | `State` == "IA" | `State` == "NM" | `State` == "ME" | `State` == "AK" )
+```
+
+```{r}
+MEC2 = MEC1
+MEC2$`Plan ID` = formatC(MEC2$`Plan ID`, width=3, flag="0")
+MEC2$Enrollment = as.numeric(MEC2$Enrollment)
+MEC3 = MEC2 %>%
+  select(`Contract Number`, `Plan ID`, `State`, `Enrollment`) %>%
+  group_by(`Contract Number`, `Plan ID`, `State`) %>%
+  summarize(Enrollment = sum(Enrollment))
+```
+
+```{r}
+MEP1 = MEP %>%
+  filter(str_detect(`Contract Number`, paste(c("H", "R", "E"), collapse = "|")))
+MEP2 = MEP1 %>%
+  select(`Contract Number`, `Plan ID`, `Organization Marketing Name`)
+```
+
+```{r}
+DATA1 = merge(MEC3, MEP2, by = c("Contract Number", "Plan ID"))
+DATA2 = merge(DATA1, MIO, by = "Organization Marketing Name")
+DATA3 = DATA2 %>%
+  select(`MajorInsuranceOrgName`, State, Enrollment) %>%
+  group_by(`MajorInsuranceOrgName`, State) %>%
+  summarize(Enrollment = sum(Enrollment))
+```
+
+### 1. For CA
+
+```{r}
+DATA_CA = DATA3 %>%
+  filter(State == "CA")
+Sum = sum(DATA_CA$Enrollment)
+DATA_CA1 = DATA_CA %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_CA1 = DATA_CA1[order(-DATA_CA1$MS),]
+head(DATA_CA1)
+DATA_CA2 = DATA_CA1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_CA = sum(DATA_CA2$MS2)
+HHI_CA
+```
+
+In CA, Kaiser has the largest market share, which is 43.70%, and the HHI of CA is 2417. The single payer in the insurance market of CA is Kaiser.
+
+### 2. For OH
+
+```{r}
+DATA_OH = DATA3 %>%
+  filter(State == "OH")
+Sum = sum(DATA_OH$Enrollment)
+DATA_OH1 = DATA_OH %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_OH1 = DATA_OH1[order(-DATA_OH1$MS),]
+head(DATA_OH1)
+DATA_OH2 = DATA_OH1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_OH = sum(DATA_OH2$MS2)
+HHI_OH
+```
+
+For OH, Aetna Health Inc. (23.92%) and BlueCrossBlueShield (23.13%) are two biggest players in the market, and the HHI of OH is 1638.
+
+### 3. For WA
+
+```{r}
+DATA_WA = DATA3 %>%
+  filter(State == "WA")
+Sum = sum(DATA_WA$Enrollment)
+DATA_WA1 = DATA_WA %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_WA1 = DATA_WA1[order(-DATA_WA1$MS),]
+head(DATA_WA1)
+DATA_WA2 = DATA_WA1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_WA = sum(DATA_WA2$MS2)
+HHI_WA
+```
+
+For WA, UnitedHealthcare is the biggest player with 34.00% market share, and the HHI of WA is 2266.
+
+### 4. For MD
+
+```{r}
+DATA_MD = DATA3 %>%
+  filter(State == "MD")
+Sum = sum(DATA_MD$Enrollment)
+DATA_MD1 = DATA_MD %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_MD1 = DATA_MD1[order(-DATA_MD1$MS),]
+head(DATA_MD1)
+DATA_MD2 = DATA_MD1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_MD = sum(DATA_MD2$MS2)
+HHI_MD
+```
+
+In MD, Kaiser has the largest market share, which is 39.48%; the HHI of MD is 2307.
+
+### 5. For LA
+
+```{r}
+DATA_LA = DATA3 %>%
+  filter(State == "LA")
+Sum = sum(DATA_LA$Enrollment)
+DATA_LA1 = DATA_LA %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_LA1 = DATA_LA1[order(-DATA_LA1$MS),]
+head(DATA_LA1)
+DATA_LA2 = DATA_LA1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_LA = sum(DATA_LA2$MS2)
+HHI_LA
+```
+
+In LA, Humana occupies more than half of the market share, which is 54.16%, and the HHI of IA is 3566.
+
+### 6. For IA
+
+```{r}
+DATA_IA = DATA3 %>%
+  filter(State == "IA")
+Sum = sum(DATA_IA$Enrollment)
+DATA_IA1 = DATA_IA %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_IA1 = DATA_IA1[order(-DATA_IA1$MS),]
+head(DATA_IA1)
+DATA_IA2 = DATA_IA1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_IA = sum(DATA_IA2$MS2)
+HHI_IA
+```
+
+For IA, UnitedHealthcare has the dominant position in the insurance market with 41.91% market share, and the HHI of NM is 2946.
+
+### 7. For NM
+
+```{r}
+DATA_NM = DATA3 %>%
+  filter(State == "NM")
+Sum = sum(DATA_NM$Enrollment)
+DATA_NM1 = DATA_NM %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_NM1 = DATA_NM1[order(-DATA_NM1$MS),]
+head(DATA_NM1)
+DATA_NM2 = DATA_NM1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_NM = sum(DATA_NM2$MS2)
+HHI_NM
+```
+
+In NM, UnitedHealthcare and Presbyterian Health Plan have almost the same market share (29.92% and 28.74% respectively), and the HHI of LA is 2320.
+
+### 8. For ME
+
+```{r}
+DATA_ME = DATA3 %>%
+  filter(State == "ME")
+Sum = sum(DATA_ME$Enrollment)
+DATA_ME1 = DATA_ME %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_ME1 = DATA_ME1[order(-DATA_ME1$MS),]
+head(DATA_ME1)
+DATA_ME2 = DATA_ME1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_ME = sum(DATA_ME2$MS2)
+HHI_ME
+```
+
+For ME, Martin's Point Generations Advantage has the largest market share (40.09%), and the HHI of ME is 2529.
+
+### 9. For AK
+
+```{r}
+DATA_AK = DATA3 %>%
+  filter(State == "AK")
+Sum = sum(DATA_AK$Enrollment)
+DATA_AK1 = DATA_AK %>%
+  mutate(MS = Enrollment/Sum*100)
+DATA_AK1 = DATA_AK1[order(-DATA_AK1$MS),]
+head(DATA_AK1)
+DATA_AK2 = DATA_AK1 %>%
+  mutate(MS2 = MS ** 2)
+HHI_AK = sum(DATA_AK2$MS2)
+HHI_AK
+```
+
+The insurance market in AK is highly concentrated in the hands of one big player, Aetna Health Inc.. This company has a 77.10% market share. The HHI of ME is 6267.
+
+## Question 2
+
+```{r}
+colnames(PDP)[which(names(PDP) == "pbp_a_hnumber")] <- "Contract Number"
+colnames(PDP)[which(names(PDP) == "pbp_a_plan_identifier")] <- "Plan ID"
+colnames(PDP)[which(names(PDP) == "pbp_b16a_bendesc_yn")] <- "Prevent"
+colnames(PDP)[which(names(PDP) == "pbp_b16b_bendesc_yn")] <- "Compre"
+PDP$`Plan ID` = formatC(PDP$`Plan ID`, width=3, flag="0")
+PDP = PDP %>%
+  select(`Contract Number`, `Plan ID`, Prevent, Compre)
+Q2_DATA = DATA2 %>% 
+  select(`Contract Number`, `Plan ID`, `State`, `Enrollment`, `MajorInsuranceOrgName`)
+Q2_DATA1 = merge(PDP, Q2_DATA, by = c("Contract Number","Plan ID"))
+Q2_DATA2 = Q2_DATA1 %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent, Compre)
+Q2_DATA2 = na.omit(Q2_DATA2)
+```
+
+### 1. For CA
+
+```{r}
+CA_5 = head(DATA_CA1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_CA = Q2_DATA2 %>%
+  filter(State == "CA")
+# Prevent
+Q2_CA1 = Q2_CA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_CA2 = Q2_CA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_CA3 = merge(Q2_CA1, Q2_CA2, by = "MajorInsuranceOrgName")
+Q2_CA4 = merge(Q2_CA3, CA_5, by = "MajorInsuranceOrgName")
+Q2_CA5 = Q2_CA4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_CA6 = Q2_CA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_CA7 = Q2_CA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_CA8 = merge(Q2_CA6, Q2_CA7, by = "MajorInsuranceOrgName")
+Q2_CA9 = merge(Q2_CA8, CA_5, by = "MajorInsuranceOrgName")
+Q2_CA10 = Q2_CA9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_CA11 = merge(Q2_CA5, Q2_CA10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_CA11 = Q2_CA11[order(-Q2_CA11$MS),]
+rownames(Q2_CA11) = NULL
+head(Q2_CA11,5)
+```
+
+### 2. For OH
+
+```{r}
+OH_5 = head(DATA_OH1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_OH = Q2_DATA2 %>%
+  filter(State == "OH")
+# Prevent
+Q2_OH1 = Q2_OH %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_OH2 = Q2_OH %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_OH3 = merge(Q2_OH1, Q2_OH2, by = "MajorInsuranceOrgName")
+Q2_OH4 = merge(Q2_OH3, OH_5, by = "MajorInsuranceOrgName")
+Q2_OH5 = Q2_OH4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_OH6 = Q2_OH %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_OH7 = Q2_OH %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_OH8 = merge(Q2_OH6, Q2_OH7, by = "MajorInsuranceOrgName")
+Q2_OH9 = merge(Q2_OH8, OH_5, by = "MajorInsuranceOrgName")
+Q2_OH10 = Q2_OH9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_OH11 = merge(Q2_OH5, Q2_OH10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_OH11 = Q2_OH11[order(-Q2_OH11$MS),]
+rownames(Q2_OH11) = NULL
+head(Q2_OH11,5)
+```
+
+### 3. For WA
+
+```{r}
+WA_5 = head(DATA_WA1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_WA = Q2_DATA2 %>%
+  filter(State == "WA")
+# Prevent
+Q2_WA1 = Q2_WA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_WA2 = Q2_WA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_WA3 = merge(Q2_WA1, Q2_WA2, by = "MajorInsuranceOrgName")
+Q2_WA4 = merge(Q2_WA3, WA_5, by = "MajorInsuranceOrgName")
+Q2_WA5 = Q2_WA4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_WA6 = Q2_WA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_WA7 = Q2_WA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_WA8 = merge(Q2_WA6, Q2_WA7, by = "MajorInsuranceOrgName")
+Q2_WA9 = merge(Q2_WA8, WA_5, by = "MajorInsuranceOrgName")
+Q2_WA10 = Q2_WA9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_WA11 = merge(Q2_WA5, Q2_WA10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_WA11 = Q2_WA11[order(-Q2_WA11$MS),]
+rownames(Q2_WA11) = NULL
+head(Q2_WA11,5)
+```
+
+### 4. For MD
+
+```{r}
+MD_5 = head(DATA_MD1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_MD = Q2_DATA2 %>%
+  filter(State == "MD")
+# Prevent
+Q2_MD1 = Q2_MD %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_MD2 = Q2_MD %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_MD3 = merge(Q2_MD1, Q2_MD2, by = "MajorInsuranceOrgName")
+Q2_MD4 = merge(Q2_MD3, MD_5, by = "MajorInsuranceOrgName")
+Q2_MD5 = Q2_MD4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_MD6 = Q2_MD %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_MD7 = Q2_MD %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_MD8 = merge(Q2_MD6, Q2_MD7, by = "MajorInsuranceOrgName")
+Q2_MD9 = merge(Q2_MD8, MD_5, by = "MajorInsuranceOrgName")
+Q2_MD10 = Q2_MD9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_MD11 = merge(Q2_MD5, Q2_MD10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_MD11 = Q2_MD11[order(-Q2_MD11$MS),]
+rownames(Q2_MD11) = NULL
+head(Q2_MD11,5)
+```
+
+### 5. For LA
+
+```{r}
+LA_5 = head(DATA_LA1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_LA = Q2_DATA2 %>%
+  filter(State == "LA")
+# Prevent
+Q2_LA1 = Q2_LA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_LA2 = Q2_LA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_LA3 = merge(Q2_LA1, Q2_LA2, by = "MajorInsuranceOrgName")
+Q2_LA4 = merge(Q2_LA3, LA_5, by = "MajorInsuranceOrgName")
+Q2_LA5 = Q2_LA4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_LA6 = Q2_LA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_LA7 = Q2_LA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_LA8 = merge(Q2_LA6, Q2_LA7, by = "MajorInsuranceOrgName")
+Q2_LA9 = merge(Q2_LA8, LA_5, by = "MajorInsuranceOrgName")
+Q2_LA10 = Q2_LA9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_LA11 = merge(Q2_LA5, Q2_LA10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_LA11 = Q2_LA11[order(-Q2_LA11$MS),]
+rownames(Q2_LA11) = NULL
+head(Q2_LA11,5)
+```
+
+### 6. For IA
+
+```{r}
+IA_5 = head(DATA_IA1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_IA = Q2_DATA2 %>%
+  filter(State == "IA")
+# Prevent
+Q2_IA1 = Q2_IA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_IA2 = Q2_IA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_IA3 = merge(Q2_IA1, Q2_IA2, by = "MajorInsuranceOrgName")
+Q2_IA4 = merge(Q2_IA3, IA_5, by = "MajorInsuranceOrgName")
+Q2_IA5 = Q2_IA4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_IA6 = Q2_IA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_IA7 = Q2_IA %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_IA8 = merge(Q2_IA6, Q2_IA7, by = "MajorInsuranceOrgName")
+Q2_IA9 = merge(Q2_IA8, IA_5, by = "MajorInsuranceOrgName")
+Q2_IA10 = Q2_IA9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_IA11 = merge(Q2_IA5, Q2_IA10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_IA11 = Q2_IA11[order(-Q2_IA11$MS),]
+rownames(Q2_IA11) = NULL
+head(Q2_IA11,5)
+```
+
+### 7. For NM
+
+```{r}
+NM_5 = head(DATA_NM1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_NM = Q2_DATA2 %>%
+  filter(State == "NM")
+# Prevent
+Q2_NM1 = Q2_NM %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_NM2 = Q2_NM %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_NM3 = merge(Q2_NM1, Q2_NM2, by = "MajorInsuranceOrgName")
+Q2_NM4 = merge(Q2_NM3, NM_5, by = "MajorInsuranceOrgName")
+Q2_NM5 = Q2_NM4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_NM6 = Q2_NM %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_NM7 = Q2_NM %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_NM8 = merge(Q2_NM6, Q2_NM7, by = "MajorInsuranceOrgName")
+Q2_NM9 = merge(Q2_NM8, NM_5, by = "MajorInsuranceOrgName")
+Q2_NM10 = Q2_NM9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_NM11 = merge(Q2_NM5, Q2_NM10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_NM11 = Q2_NM11[order(-Q2_NM11$MS),]
+rownames(Q2_NM11) = NULL
+head(Q2_NM11,5)
+```
+
+### 8. For ME
+
+```{r}
+ME_5 = head(DATA_ME1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_ME = Q2_DATA2 %>%
+  filter(State == "ME")
+# Prevent
+Q2_ME1 = Q2_ME %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_ME2 = Q2_ME %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_ME3 = merge(Q2_ME1, Q2_ME2, by = "MajorInsuranceOrgName")
+Q2_ME4 = merge(Q2_ME3, ME_5, by = "MajorInsuranceOrgName")
+Q2_ME5 = Q2_ME4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_ME6 = Q2_ME %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_ME7 = Q2_ME %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_ME8 = merge(Q2_ME6, Q2_ME7, by = "MajorInsuranceOrgName")
+Q2_ME9 = merge(Q2_ME8, ME_5, by = "MajorInsuranceOrgName")
+Q2_ME10 = Q2_ME9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_ME11 = merge(Q2_ME5, Q2_ME10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_ME11 = Q2_ME11[order(-Q2_ME11$MS),]
+rownames(Q2_ME11) = NULL
+head(Q2_ME11,5)
+```
+
+### 9. For AK
+
+```{r}
+AK_5 = head(DATA_AK1, 5) %>%
+  select(`MajorInsuranceOrgName`, MS)
+Q2_AK = Q2_DATA2 %>%
+  filter(State == "AK")
+# Prevent
+Q2_AK1 = Q2_AK %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_AK2 = Q2_AK %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Prevent) %>%
+  filter(Prevent == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Prevent = sum(Enrollment))
+Q2_AK3 = merge(Q2_AK1, Q2_AK2, by = "MajorInsuranceOrgName")
+Q2_AK4 = merge(Q2_AK3, AK_5, by = "MajorInsuranceOrgName")
+Q2_AK5 = Q2_AK4 %>%
+  mutate(Pre_Percent = Sum_Prevent/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Pre_Percent)
+# Compre
+Q2_AK6 = Q2_AK %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_all = sum(Enrollment))
+Q2_AK7 = Q2_AK %>%
+  select(`State`, `Enrollment`, `MajorInsuranceOrgName`, Compre) %>%
+  filter(Compre == "1") %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Compre = sum(Enrollment))
+Q2_AK8 = merge(Q2_AK6, Q2_AK7, by = "MajorInsuranceOrgName")
+Q2_AK9 = merge(Q2_AK8, AK_5, by = "MajorInsuranceOrgName")
+Q2_AK10 = Q2_AK9 %>%
+  mutate(Compre_Percent = Sum_Compre/Sum_all) %>%
+  select(`MajorInsuranceOrgName`, MS, Compre_Percent)
+Q2_AK11 = merge(Q2_AK5, Q2_AK10, by = c("MajorInsuranceOrgName", "MS"))
+Q2_AK11 = Q2_AK11[order(-Q2_AK11$MS),]
+rownames(Q2_AK11) = NULL
+head(Q2_AK11,5)
+```
+
+## Question 3
+
+```{r warning=FALSE}
+DATA4 = DATA2 %>%
+  select(`Contract Number`, `MajorInsuranceOrgName`, State, Enrollment) %>%
+  group_by(`Contract Number`, `MajorInsuranceOrgName`, State) %>%
+  summarize(Enrollment = sum(Enrollment))
+EOC = EOC %>%
+  select(`Contract Number`, `EOC170-0010`)
+DATA5 = merge(DATA4, EOC, by = "Contract Number")
+DATA5$`EOC170-0010` = as.numeric(DATA5$`EOC170-0010`)
+DATA5 = na.omit(DATA5)
+DATA5 = DATA5 %>%
+  filter(`EOC170-0010` != 0)
+```
+
+### 1. For CA
+
+```{r}
+CA_10 = head(DATA_CA1, 10)
+Q3_CA = DATA5 %>%
+  filter(State == "CA") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_CA2 = Q3_CA %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_CA3 = merge(CA_10, Q3_CA2, by = "MajorInsuranceOrgName")
+Q3_CA4 = Q3_CA3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_CA4 = Q3_CA4[order(-Q3_CA4$UOD),]
+rownames(Q3_CA4) = NULL
+head(Q3_CA4, 10)
+```
+
+### 2. For OH
+
+```{r}
+OH_10 = head(DATA_OH1, 10)
+Q3_OH = DATA5 %>%
+  filter(State == "OH") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_OH2 = Q3_OH %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_OH3 = merge(OH_10, Q3_OH2, by = "MajorInsuranceOrgName")
+Q3_OH4 = Q3_OH3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_OH4 = Q3_OH4[order(-Q3_OH4$UOD),]
+rownames(Q3_OH4) = NULL
+head(Q3_OH4, 10)
+```
+
+### 3. For WA
+
+```{r}
+WA_10 = head(DATA_WA1, 10)
+Q3_WA = DATA5 %>%
+  filter(State == "WA") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_WA2 = Q3_WA %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_WA3 = merge(WA_10, Q3_WA2, by = "MajorInsuranceOrgName")
+Q3_WA4 = Q3_WA3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_WA4 = Q3_WA4[order(-Q3_WA4$UOD),]
+rownames(Q3_WA4) = NULL
+head(Q3_WA4, 10)
+```
+
+### 4. For MD
+
+```{r}
+MD_10 = head(DATA_MD1, 10)
+Q3_MD = DATA5 %>%
+  filter(State == "MD") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_MD2 = Q3_MD %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_MD3 = merge(MD_10, Q3_MD2, by = "MajorInsuranceOrgName")
+Q3_MD4 = Q3_MD3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_MD4 = Q3_MD4[order(-Q3_MD4$UOD),]
+rownames(Q3_MD4) = NULL
+head(Q3_MD4, 10)
+```
+
+### 5. For LA
+
+```{r}
+LA_10 = head(DATA_LA1, 10)
+Q3_LA = DATA5 %>%
+  filter(State == "LA") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_LA2 = Q3_LA %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_LA3 = merge(LA_10, Q3_LA2, by = "MajorInsuranceOrgName")
+Q3_LA4 = Q3_LA3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_LA4 = Q3_LA4[order(-Q3_LA4$UOD),]
+rownames(Q3_LA4) = NULL
+head(Q3_LA4, 10)
+```
+
+### 6. For IA
+
+```{r}
+IA_10 = head(DATA_IA1, 10)
+Q3_IA = DATA5 %>%
+  filter(State == "IA") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_IA2 = Q3_IA %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_IA3 = merge(IA_10, Q3_IA2, by = "MajorInsuranceOrgName")
+Q3_IA4 = Q3_IA3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_IA4 = Q3_IA4[order(-Q3_IA4$UOD),]
+rownames(Q3_IA4) = NULL
+head(Q3_IA4, 10)
+```
+
+### 7. For NM
+
+```{r}
+NM_10 = head(DATA_NM1, 10)
+Q3_NM = DATA5 %>%
+  filter(State == "NM") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_NM2 = Q3_NM %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_NM3 = merge(NM_10, Q3_NM2, by = "MajorInsuranceOrgName")
+Q3_NM4 = Q3_NM3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_NM4 = Q3_NM4[order(-Q3_NM4$UOD),]
+rownames(Q3_NM4) = NULL
+head(Q3_NM4, 10)
+```
+
+### 8. For ME
+
+```{r}
+ME_10 = head(DATA_ME1, 10)
+Q3_ME = DATA5 %>%
+  filter(State == "ME") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_ME2 = Q3_ME %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_ME3 = merge(ME_10, Q3_ME2, by = "MajorInsuranceOrgName")
+Q3_ME4 = Q3_ME3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_ME4 = Q3_ME4[order(-Q3_ME4$UOD),]
+rownames(Q3_ME4) = NULL
+head(Q3_ME4, 10)
+```
+
+### 9. For AK
+
+```{r}
+AK_10 = head(DATA_AK1, 10)
+Q3_AK = DATA5 %>%
+  filter(State == "AK") %>%
+  mutate(EE = Enrollment * `EOC170-0010`)
+Q3_AK2 = Q3_AK %>%
+  select(`MajorInsuranceOrgName`, Enrollment, EE) %>%
+  group_by(`MajorInsuranceOrgName`) %>%
+  summarize(Sum_Enroll = sum(Enrollment),
+            Sum_EE = sum(EE)) %>%
+  mutate(UOD = Sum_EE/Sum_Enroll) %>%
+  select(`MajorInsuranceOrgName`, UOD)
+Q3_AK3 = merge(AK_10, Q3_AK2, by = "MajorInsuranceOrgName")
+Q3_AK4 = Q3_AK3 %>%
+  select(`MajorInsuranceOrgName`, State, UOD, MS)
+Q3_AK4 = Q3_AK4[order(-Q3_AK4$UOD),]
+rownames(Q3_AK4) = NULL
+head(Q3_AK4, 10)
+```

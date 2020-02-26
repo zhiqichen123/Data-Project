@@ -1,0 +1,521 @@
+---
+title: "Black Friday Project"
+author: "Written by Shengzhe Xu, Zhiqi Chen, Qimo Li"
+date: "December 5, 2018"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+library(readr)
+BF = read_csv("BlackFriday.csv")
+library(tidyverse)
+library(knitr)
+library(RColorBrewer)
+library(cluster)
+options(scipen = 20)
+```
+
+> #### 1) Introduction
+
+One of the reasons that made us choose to work with this dataset is we all love shopping, especially when everything is on sale. Given that Thanksgiving is coming soon, we hope that by doing this analysis, we might gain some insights into consumer behaviors of Black Friday shoppers and then improve our shopping experience.
+
+Obviously, what I mentioned above is just a tiny part of our goal. What we are looking for, by doing this project, is to help brands and stores to achieve some managerial objectives so that they can find the most efficient way to boost their sales, and thus to maximize their profits. Firstly, we wanted to look at how customers' social background and demographic information, such as gender, income, and marital status, change their shopping behaviors and their decisions on the amount they spend. We can figure this out by doing a regression.
+
+Furthermore, we are interested in finding out which specific categories of products are more popular among certain customers on Black Friday. For example, we might be able to see that category 1 is more popular among female shoppers, while category 5 attract more males. This information is very valuable as it has the potential to tell brands what kinds of customers they should target when they are doing promotions and marketing activities.
+
+In conclusion, our ultimate goal is to better understand customers and their shopping behaviors on the most important annual shopping day, Black Friday. Supported by the results of our analysis, we hope to help brands identify and focus on the most valuable market segments, promote their products more specifically and efficiently, and ultimately have higher sales, lower costs, and greater profit.
+
+> #### 2) Data Description
+
+**--- a ---**
+
+```{r}
+Variable = c("User_ID", "Product_ID", "Gender", "Age", "Occupation", "City_Category", "Stay_In_Current_City_Years", "Marital_Status","Product_Category_1","Product_Category_2","Product_Category_3","Purchase")
+Type = c("Nominal Discrete","Nominal Discrete","Nominal Discrete","Oridinal Discrete","Nominal Discrete","Nominal Discrete","Oridinal Discrete","Nominal Discrete","Nominal Discrete","Nominal Discrete","Nominal Discrete","Ratio Continuous")
+variable_type = data.frame(Variable, Type)
+knitr::kable(variable_type)
+```
+
+**--- b ---**
+
+We directly deleted product category 2 and 3 both because there are many missing values under them and because we do not really need these two variables in any of the analyses.
+We changed the data type of "Purchase" from "integer" to "numeric", and changed the data types of other variables to "factor".
+
+```{r}
+sapply(BF, function(BF) sum(is.na(BF)))
+BF[is.na(BF)] = 0
+BF = BF %>% mutate_if(sapply(BF, is.character), as.factor)
+BF = BF %>% mutate_if(sapply(BF, is.integer), as.factor)
+BF = BF %>% mutate_if(sapply(BF, is.numeric), as.factor)
+BF$Purchase = as.numeric(BF$Purchase)
+str(BF)
+```
+
+> #### 3) Summary statistics and Data Visualizations
+
+```{r}
+BFData = BF %>% 
+group_by(User_ID, Gender, Age, City_Category, Stay_In_Current_City_Years, Marital_Status, Occupation) %>%
+  summarize(Total_Purchase = sum(Purchase))
+```
+
+**Chart 1**
+
+```{r}
+Age_Purchase = BFData %>%
+  group_by(Age) %>%
+  summarize(Total_Purchase = sum(Total_Purchase), Avg_Purchase = Total_Purchase/n())
+ggplot(Age_Purchase, aes(x = Age, y = Avg_Purchase)) +
+  geom_bar(stat = "identity", alpha = 0.6, width = 0.5, fill = "cornflowerblue") +
+  labs(y = "Avg Purchase") +
+  ggtitle("How Age Affects Purchase") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_continuous(breaks = c(0, 200000, 400000, 600000), labels = c("0","200k","400k","600k"))
+```
+
+The purpose of drawing this graph is to see the relationship between age and average purchase amounts. In other words, we were trying to know how age affects the purchase. We used age as the x-variable and average purchase as the y-variable to see which age group is likely to spend more. A bar chart is the most effective here because it can clearly show the average purchase of different age groups. We set breaks and labels of the y-axis by using the scale_y_continuous command, and chose "cornflowerblue" to fill the bars to provide a nice contrast with the background, all to make the graph more readable.  
+To answer our question, as the age grows, the total purchase of customers first goes up and then decreases. Young adults and middle-aged people have the strongest purchasing power. Customers from 26 to 35 years old purchase the most, buying above 750 thousand dollars on average. 18 to 25-year-old customers and 36 to 45-year-old customers have similar purchasing power; their average purchase amounts are about 650 thousand dollars. People in other age groups have relatively small purchasing power.
+
+**Chart 2**
+
+```{r}
+ggplot(BFData, aes(x = Gender, y = Total_Purchase, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = "How Gender Affects Purchase", y = "Avg Purchase") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_y_log10()
+```
+
+In this graph, we tried to figure out whether men or women purchase more during Black Friday. Thus, we used the box plot to find the distribution of average purchase amounts of males and females. The box plot can display statistics directly, showing the minimum, first quartile, median, third quartile, and maximum in a single chart. Moreover, we can get a better understanding of the purchase distribution between males and females by comparing the position of the two boxes. To make the graph easier to read, we set the title, the scale of y, and the label for the x and y-axis.  
+From this graph, we can conclude that males have a wider distribution interval than females. Also, on average, men purchase more than women.  
+A similar plot is found here: https://www.kaggle.com/monethong/who-bought-what
+
+**Chart 3**
+
+```{r}
+Marital_Purchase = BFData %>%
+  group_by(City_Category, Marital_Status) %>% 
+summarize(Total_Purchase = sum(Total_Purchase), Avg_Purchase = Total_Purchase/n())
+ggplot(Marital_Purchase, aes(x = City_Category, y = Avg_Purchase, fill = Marital_Status)) +
+  geom_bar(stat = "identity", width = 0.5, position = "dodge") +
+  scale_y_continuous(breaks = seq(0, 1000000, 500000), labels = c("0","500k","1m")) +
+  labs(title = "How Marital Status Influences Purchase By Cities", x = "Cities", y = "Avg Purchase") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+We wanted to know whether marital status causes a gap in the purchase amount and whether a difference of that gap exists among three cities. A bar chart is perfect here because it allows us to see how unmarried and married shoppers in three cities spend differently. It is also obvious to see shoppers of which city have the strongest purchase power (the tallest average purchase bar). To make the graph more clear, we added a centered title, and changed axes' names and the unit of the y-axis. We also dodged the bars for better comparison.  
+According to the graph, we can conclude that marital status is not a key determinant of the average purchase amounts as there is only a little difference in purchase between married and unmarried shoppers across three cities. We can also see from the graph that shoppers in City A and City B have a much bigger purchase power than those in City C.  
+A similar plot is found here: https://www.kaggle.com/monethong/who-bought-what
+
+**Chart 4**
+
+```{r}
+Occupation_Purchase = BFData %>%
+  group_by(Occupation) %>% 
+summarize(Total_Purchase = sum(Total_Purchase), Avg_Purchase = Total_Purchase/n())
+ggplot(Occupation_Purchase, aes(x = Occupation, y = Avg_Purchase, fill = Occupation)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(breaks = seq(0, 800000, 200000), labels = c("0", "200k", "400k", "600k", "800k")) +
+  labs(title = "How Occupation Influences Purchase", y = "Avg Purchase") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  coord_flip()
+```
+
+As we all know, people with different occupations have different purchasing power, so we chose occupation as an independent variable and average purchase as a dependent variable to see how people with different professions spend differently. In other words, we were hoping to see if occupation affects the purchase amount. We used the bar graph because it can clearly show which occupation spends the most (with the tallest bar) and which spends the least. We improved the chart by changing the label of the y-axis and adding a centered title to the graph to make it more understandable. We also used fills to the bars to distinguish different occupations and to make the graph more aesthetically appealing.  
+From the graph, we can conclude that occupations do affect the purchase amounts. Occupations 5, 16, 19 and 20 spend more than many of the rest, while occupations 9, 10 and 13 spend the least.
+
+**Chart 5**
+
+```{r}
+City_Purchase = BFData %>%
+  group_by(City_Category, Gender) %>% 
+summarize(Total_Purchase = sum(Total_Purchase), Avg_Purchase = Total_Purchase/n())
+ggplot(City_Purchase, aes(x = City_Category, y = Avg_Purchase, fill = Gender)) +
+  geom_bar(position = "fill", stat = "identity", width = 0.5) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Gender Purchase Gap in Three Cities",y = "Avg Purchase", x = "City") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+We chose city category as the x-variable and average purchase as the y-variable, and used gender to break up the average purchase. We used a bar chart and set the scale of y-axis as percent so that we can see men or women who spend more money in the three cities. To improve the graph, we set the title, and renamed the x and y-axis.  
+From this graph, it is clear that men purchase more than women, because the purchase percentages of men in the three cities are all above 50%.
+
+**Chart 6**
+
+```{r}
+Stay_Purchase = BFData %>%
+  group_by(Stay_In_Current_City_Years, City_Category) %>% 
+summarize(Total_Purchase = sum(Total_Purchase), Avg_Purchase = Total_Purchase/n())
+ggplot(Stay_Purchase, aes(x = Stay_In_Current_City_Years, y = Avg_Purchase, fill = City_Category)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+  labs(title = "Relationship between Avg Purchase and Living Time", x = "Stay in Current City Years", y = "Avg Purchase", fill = "City Category") +
+  scale_y_continuous(breaks = c(0, 300000, 600000, 900000), labels = c("0", "300k", "600k", "900k")) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_manual(values = brewer.pal(n = 3, name = "Set2"))
+```
+
+We chose the staying time as the x-variable and average purchase as the y-variable, and used city category to divide up the staying time. We did this because we wanted to see the relationship between average purchase and living time in different city categories. We used a bar chart because it can clearly show whether people who stay longer are more likely to spend more across Cities A, B and C. Aesthetically, we filled the plot with different colors for different city categories to make it more appealing and easier to compare. We also used the scale_y_continuous function to set breaks and labels of the y-axis to make it more readable. Also, we added a title to the plot and used the theme function to make the title in the center.  
+From this chart, we can conclude that people who stay in current cities for less than one year are more likely to purchase than people who stay for a longer time. Also, people in City A and City B have stronger purchasing power than those in City C. For people staying in the current city for 0 and 2 years, A citizens buy the most. For people staying for 1, 3 and more than 4 years, B citizens buy the most.
+
+**Chart 7**
+
+```{r}
+Category1_Purchase = BF %>%
+  group_by(Product_Category_1) %>% 
+  summarize(Times_Purchased = n(), Products_Purchased = n_distinct(Product_ID), Total_Purchase = sum(Purchase), Total_Customer = sum(n_distinct(User_ID)))
+Category1_Purchase1 = data.frame(Category1_Purchase$Product_Category_1, Category1_Purchase$Times_Purchased, Category1_Purchase$Products_Purchased, Category1_Purchase$Total_Purchase,Category1_Purchase$Total_Customer)
+colnames(Category1_Purchase1) = c("Product Category 1", "Purchase Frequency", "Total Number of Distinct Products", "Total Purchase Amount", "Total Number of Customers")
+knitr::kable(Category1_Purchase1)
+```
+
+We used a table to see which product category is the most popular, measured by purchase frequency, the total number of distinct products purchased within that category, the total amount of money spending on that category, and the total number of customers of that category. A table is more transparent than a plot when we compare many categories, 18 in this case, based on several different criteria. Also, the table is a powerful tool for comparison because it is sortable. If we would like to see which category has the highest number of customers, we can sort the table by the last column, Total Number of Customers.  Nothing much we needed to do to make it more straightforward because the table is self-explanatory. The only thing we did is creating comprehensible column names.  
+By looking at the table, we can conclude that category 5 has the highest purchase frequency, category 8 has the largest number of different products, and category 1 attracts the most customers and the most money.
+
+> #### 4) Preliminary Statistical Analyses
+
+**Statistical Analysis 1**
+
+We wanted to see if gender is a determinant of purchase amounts.
+
+```{r}
+Male = BFData %>%
+  filter(Gender == "M")
+Female = BFData %>%
+  filter(Gender == "F")
+t.test(Male$Total_Purchase, Female$Total_Purchase)
+```
+
+The p-value is extremely small, which indicates that there is a huge difference in the purchase amounts between males and females. The average purchase amount of a man is 705477.9 while that of a woman is only 539018.7. From this result, we can conclude that men buy more than women, and this conclusion is consistent with our finding in chart 2.
+
+**Statistical Analysis 2**
+
+We wanted to see if marital status is a determinant of purchase amounts.
+
+```{r}
+m1 = BFData %>%
+  filter(Marital_Status == "1")
+m0 = BFData %>%
+  filter(Marital_Status == "0")
+t.test(m1$Total_Purchase, m0$Total_Purchase)
+```
+
+From the result of the t-test, we can see that the p-value is large, which means that there is no significant difference in the purchase amounts between married people and unmarried people. It is consistent with our finding in chart 3.
+
+**Statistical Analysis 3**
+
+Based on the analysis 2, we wanted to see if marital status is a determinant of purchase amounts across 3 cities.
+
+```{r}
+CityA0 = BFData %>% 
+  filter(City_Category == "A" & Marital_Status == 0) %>% 
+  summarize(TotalPurchase = sum(Total_Purchase))
+CityA1 = BFData %>% 
+  filter(City_Category == "A" & Marital_Status == 1) %>% 
+  summarize(TotalPurchase = sum(Total_Purchase))
+CityB0 = BFData %>% 
+  filter(City_Category == "B" & Marital_Status == 0) %>% 
+  summarize(TotalPurchase = sum(Total_Purchase))
+CityB1 = BFData %>% 
+  filter(City_Category == "B" & Marital_Status == 1) %>% 
+  summarize(TotalPurchase = sum(Total_Purchase))
+CityC0 = BFData %>% 
+  filter(City_Category == "C" & Marital_Status == 0) %>% 
+  summarize(TotalPurchase = sum(Total_Purchase))
+CityC1 = BFData %>% 
+  filter(City_Category == "C" & Marital_Status == 1) %>% 
+  summarize(TotalPurchase = sum(Total_Purchase))
+```
+
+```{r}
+t.test(CityA0$TotalPurchase, CityA1$TotalPurchase)
+t.test(CityB0$TotalPurchase, CityB1$TotalPurchase)
+t.test(CityC0$TotalPurchase, CityC1$TotalPurchase)
+```
+
+From the third plot we made earlier, we were unable to see there is a significant difference in the average purchase between unmarried and married shoppers across the three cities. We chose to use the t-test to see whether a difference actually exists. T-tests work between two continuous variables, purchases in this case. We can not reject the null in all three t-tests, given p-values that large. Therefore, we conclude that there is a big chance that the difference is actually 0 in all three cities. In other words, marital status does not influence the purchase no matter in cities A, B and C.
+
+**Statistical Analysis 4**
+
+We wanted to see if age is corrleated with purchase amount.
+
+```{r}
+Age1 = BFData %>% 
+  group_by(User_ID, Age) %>% 
+  summarise(Total_Purchase = sum(Total_Purchase))
+Age1$Age = as.numeric(Age1$Age)
+cor(Age1$Age, Age1$Total_Purchase, method = "spearman")
+```
+
+Correlation is a bivariate analysis that measures the strength of association between two variables and the direction of the relationship. The Spearman rank correlation test does not carry any assumptions about the distribution of the data and is the appropriate correlation analysis when the variables are measured on a scale that is at least ordinal. In this case, we tested the correlation relationship between an ordinal discrete variable, age groups, and a continuous variable, purchase. The result of this test tells us that there is a very weak negative correlation between the two variables.
+
+> #### 5) Regression Analyses
+
+**Regression 1**
+
+```{r}
+BFreg1 = BF %>% 
+  mutate(PC1_1_Buyer = as.numeric(BF$Product_Category_1 == 1))
+logregpc1 = BFreg1 %>% 
+  group_by(User_ID, Gender, PC1_1_Buyer, City_Category,Marital_Status, Age, Occupation) %>%
+  summarize(Total_Purchase = sum(Purchase))
+logregpc11 = logregpc1 %>%
+  group_by(User_ID, Gender, City_Category, Marital_Status, Age, Occupation) %>%
+  summarize(PC1_1_Buyer = sum(PC1_1_Buyer))
+```
+
+```{r}
+summary(glm(PC1_1_Buyer ~ Gender + Age + Marital_Status , data = logregpc11, family = binomial))
+```
+
+```{r}
+summary(glm(PC1_1_Buyer ~ Gender + Age + Marital_Status + City_Category, data = logregpc11, family = binomial))
+``` 
+
+In the first part, we used whether or not buying products of the 1st category of product category 1 as the dependent variable, and gender, age, and marital status as independent variables. We chose the 1st category because it is the most popular one, measured by the total expenditure of all customers, which is shown in the table (chart 7) above. The purpose of this regression is to determine which group is the most likely to buy the 1st category so that brands know whom they should target. We didn't include city categories in the first part because we wanted to see how likely a group of people buys products of the 1st category regardless of cities.  
+The result of the regression shows that, at the 10% significance level, single males from 25 to 35 years old have the highest log odds of 4.82 (2.76 + 1.31 + 0.75), holding other factors constant. Therefore, brands which focus on selling products of this category should prioritize this group for marketing and promotions.  
+Then, in the second part, we added city category as an independent variable to the regression so that we can determine whether there is a significant difference of preference on the products of the 1st category among the three cities. Unfortunately, they are not statistically significant.
+
+**Regression 2**
+
+```{r}
+BFreg5 = BF %>% 
+  mutate(PC1_5_Buyer = as.numeric(BF$Product_Category_1 == 5))
+logregpc5 = BFreg5 %>% 
+  group_by(User_ID, Gender, PC1_5_Buyer, City_Category, Marital_Status, Age) %>%
+  summarize(Total_Purchase = sum(Purchase))
+logregpc1_5 = logregpc5 %>%
+  group_by(User_ID, Gender, City_Category, Marital_Status, Age) %>%
+  summarize(PC1_5_Buyer = sum(PC1_5_Buyer))
+```
+
+```{r}
+summary(glm(PC1_5_Buyer ~ Gender + Age + Marital_Status, data = logregpc1_5, family = binomial))
+```
+
+```{r}
+summary(glm(PC1_5_Buyer ~ Gender + Age + Marital_Status + City_Category, data = logregpc1_5, family = binomial))
+```
+
+The second logistic regression is very similar to the first; the only difference is that we used whether or not buying products of the 5th category, the category with the second highest amount spent, instead of product category 1, as our dependent variable. We still used age, gender, and marital status as independent variables. According to the result, we can see that 26-35-year-old married females with the log odds of 4.72 (3.41+ 0.98 + 0.33) are the most likely to buy products of the 5th category holding other factors constant, at the 10% significance level.  
+After we added city category into the regression, we can see that, at the 10% significance level, 26-35 years old married females of city A, with the log odds of 5.44 (4.27 + 0.83 + 0.34) are most likely to buy products of the 5th category. We can also conclude that customers of city C are less interested in this category, holding other factors constant. Therefore, brands who want to cut their marketing expense might consider limiting their effort in city C and focusing more on young married females for products of this category.
+
+```{r}
+Log_odds = c(4.82, 1.10, 1.31, 0.65, 4.72, 1.13, -0.83, 3.77, -2.33, -0.09, 0.51, -0.44, -0.27, -0.92, -0.30, 0.53, -1.67, -0.79)
+Most_Valuable_Customers = c("Age26-35 Unmarried Males", "Age0-17 Unmarried Males", "Age0-17 Unmarried Females", "Age0-17 Unmarried Females", "Age26-35 Married Females", "Age26-35 Unmarried Males", "Age26-35 Unmarried Males", "Age36-45 Unmarried Females", "Age0-17 Unmarried Males", "Age36-45 Unmarried Males", "Age0-17 Unmarried Males", "Age46-50 Unmarried Females", "Age26-35 Unmarried Males", "Age51-55 Unmarried Females", "Age0-17 Unmarried Males", "Age26-35 Unmarried Males", "Age51-55 Unmarried Males", "Age51-55 Unmarried Males")
+
+BFproducts = BF %>% 
+  group_by(Product_Category_1) %>% 
+  summarize(TotPurc = sum(Purchase))
+BFproducts = BFproducts %>% 
+  select(Product_Category_1)
+BFproducts$'Log Odds' = Log_odds
+BFproducts$'Most Valuable Customers' = Most_Valuable_Customers
+BFproducts = BFproducts[,c(1,3,2)]
+BFproducts
+```
+
+Using the same method, we did a logistic regression for each category of product category 1 using whether or not buying products of that category as the dependent variable, and age, marital status, and gender as independent variables. A table is then created to show the most valuable customers of each category and their log odds of buying products of that category. All conclusions are drawn at the 10% significance level.
+
+**Regression 3**
+
+```{r}
+BF1 = BF %>% group_by(User_ID) %>% 
+  mutate(Items_Bought = n())
+BFData1 = BF1 %>% 
+group_by(User_ID, Gender, Age, City_Category, Stay_In_Current_City_Years, Marital_Status, Occupation, Items_Bought) %>% summarize(Total_Purchase = sum(Purchase))
+
+TotPurcReg = lm(Total_Purchase ~ Gender + Age + Marital_Status, data = BFData)
+summary(TotPurcReg)
+```
+
+```{r}
+TotPurcReg1 = lm(Total_Purchase ~ Gender + Age + Marital_Status + Occupation + Stay_In_Current_City_Years + Items_Bought, data = BFData1)
+summary(TotPurcReg1)
+```
+
+To determine which group has the strongest purchasing power, measured by the total purchase amount, we set up this regression by choosing total purchase amount as the dependent variable, and gender, age, and marital status as independent variables.  
+The result of this regression shows that males who are unmarried 26-35 years old spent the most money, which is $800114 (365573 + 161011 + 273530), holding everything else constant. This result is also corresponding to what we have found in earlier regressions. Marital status does not affect total purchase amount at the 10% significance level, according to this regression.  
+As we can see, the R-squared for this model is only 2.77%, which is very low, meaning that only 2.77% of the variance of total purchase amount can be explained by all the independent variables included. Therefore, we added occupation , stay in current city years, and items bought to the model as control variables to increase R-squared as well as to make the estimations more accurate. After we did so, the R-squared skyrocketed to 95.5%. Among the newly added variables, items bought is the most significant one, showing that it explains a lot of the amount spent. 
+According to this new model, 51-55-year-old single males are the group with the strongest purchasing power - a very different discovery comparing to what we found earlier before we added control variables.
+
+**Regression 4**
+
+```{r}
+TotPurcCityGender = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender, data = BFData)
+summary(TotPurcCityGender)
+```
+
+```{r}
+TotPurcCityGender1 = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender+ Marital_Status + Stay_In_Current_City_Years + Occupation + Items_Bought, data = BFData1)
+summary(TotPurcCityGender1)
+```
+
+In this regression, we wanted to see the specific group in which city spent the most. Therefore, we used the total purchase amount as the dependent variable. For independent variables, we chose gender, age, city category and an interaction term between city and gender to give an additional bump for being a male in the specific city category (if any). We did not include marital status and stay in the current city years because they were not statistically significant in the last regression. Occupation is excluded again because of its irrelevance and insignificance. The result of this regression shows that 26-35-year-old males of city A, who on average spent $1066942 (668176 + 237648 + 161118), are the people with the strongest purchasing power. Also, since the coefficients of city B and city B times gender are not significant, we cannot conclude that there is a difference between city A and city B or between males of city A and males of city B. However, customers of city C spent significantly less, corresponding to what we have found earlier.  
+Similar to what we did in the last regression, we added marital status, stay in current city years, occupation, and items bought as control variables in the second part. The resulted R-squared again boosted to 95.5%, a very significant raise. According to this model, the group consists of males in city C has the strongest purchasing power.
+
+> #### 6) Segmentation
+
+**---a---**
+
+We chose the third regression to do further segmentation. Without using any segmentation technique, we could create segments by grouping people with similar purchasing power together. If we want to get more accuarate results, we would need to apply some specific post-hoc techniques such as the K-means clustering.
+
+**---b---**
+
+```{r}
+seg.summ <- function(data, groups) {
+  aggregate(data, list(groups), function(x) mean(as.numeric(x)))  
+}
+seg.df.num = BFData1[,-1]
+data = model.matrix(~Gender + Age + Marital_Status + Stay_In_Current_City_Years + City_Category + Items_Bought + Total_Purchase, data = seg.df.num)
+scaled_data = scale(data[,-1])
+k.max <- 15
+wss <- sapply(1:k.max, 
+              function(k){kmeans(scaled_data, k, nstart=50,iter.max = 20)$tot.withinss})
+plot(1:k.max, wss,
+     type = "b", pch = 19, frame = FALSE, 
+     xlab = "Number of clusters K",
+     ylab = "Total within-clusters sum of squares")
+set.seed(96743)
+seg.k6 <- kmeans(scaled_data, centers=6)
+seg.summ(data[,-1], seg.k6$cluster)
+boxplot(seg.df.num$Total_Purchase ~ seg.k6$cluster,
+        xlab="Total Purchase", ylab="Segment", horizontal = TRUE)
+clusplot(seg.df.num, seg.k6$cluster, color=TRUE, shade=TRUE,
+         labels = 4, lines = 0, main = "K-means cluster")
+```
+
+According to the scree plot we made, we decided to create six segments. Some of the most important characteristics of these segments are as follows.  
+Males are the majority, 70-81%, of all the groups. In group 1, everyone is 36-45 years old. 60% are not married, and 62% are from city C. On average, they bought 64 items and spent 482 thousand dollars. Everyone in group 2 is seniors who are 55 years or older. 64% of them are married, and 72% of them are from city C. They bought 51 items and spent 374 thousand dollars on average. Group 3 entirely consists of people who are 51-55 years old. 72% of them are married, 56% of them are new to the city they currently live, and around 60% of them are from city C. On average, they bought 71 items and spent 527 thousand dollars. 71% of people in group 4 are 26-35 years old, and only 43% are married. 60% of them are from city C, and they, on average, bought 58 items and spent 434 thousand dollars. 81% of people in group 5 are males, and 57% of them are 26-35 years old. Nobody in this group is from city C, but rather 30% are from city A and the rest is from city B. On average, they bought 323 items and spent 2.2 million dollars, which is a much bigger number than any other groups. The last group entirely consists of people who are 18-25 years old. As a result, only 23% are married. Over half of them are from City C. On average, they bought 68 items and spent 498 thousand dollars. The box plot shows that group 5 on average spends much more than the other groups.
+
+```{r}
+BFData1$Group = seg.k6$cluster
+Finalmodel = lm(Total_Purchase ~ Gender + Age + Marital_Status + Occupation + Stay_In_Current_City_Years + factor(Group) + Items_Bought, data = BFData1)
+summary(Finalmodel)
+```
+
+```{r}
+model.sel = data.frame(Adj.RSq = c(summary(TotPurcReg1)$adj.r.squared,
+                                   summary(Finalmodel)$adj.r.squared),
+                       AIC = c(AIC(TotPurcReg1),
+                               AIC(Finalmodel)), 
+                       BIC = c(BIC(TotPurcReg1),
+                               BIC(Finalmodel)))
+rownames(model.sel) = c("Model 1", "Model 2")
+model.sel
+```
+
+After adding groups to the regression we did in part 3 of the regression analyses, we found that the model with groups has a very slightly higher adjusted R-squared and lower AIC and BIC than the model in part 3. Therefore, we can conclude that the model has been improved very little after groups were added.
+
+> #### 7) Predictive Analyses
+
+**---a---**
+
+Our final prediction problem is to predict a customer's purchasing power, given certain information about that customer.
+
+**---b---**
+
+The data aggregation level we are using is the individual level.
+
+```{r, warning=FALSE}
+set.seed(12345)
+randOrder = order(runif(nrow(BFData1)))
+training.data = subset(BFData1,randOrder < .9 * nrow(BFData1))
+validation.data =  subset(BFData1,randOrder >= .9 * nrow(BFData1))
+prediction.error = function(lm_model, validation.data){
+  predicted.purchase = predict(lm_model, validation.data)
+  error = sqrt(mean((predicted.purchase-validation.data$Total_Purchase)^2))
+}
+```
+
+**---c---**
+
+```{r, warning=FALSE}
+reg = NULL
+reg[[1]] = lm(Total_Purchase ~ Gender + Age + Marital_Status + Occupation + Stay_In_Current_City_Years +  Items_Bought, data = training.data)
+reg[[2]] = lm(Total_Purchase ~ Gender + Age + Marital_Status + Occupation + Stay_In_Current_City_Years + City_Category + Items_Bought, data = training.data)
+reg[[3]] = lm(Total_Purchase ~ Gender + Age + Marital_Status + Occupation + Stay_In_Current_City_Years + factor(Group) + Items_Bought, data = training.data)
+reg[[4]] = lm(Total_Purchase ~ Gender + Age + Marital_Status + Occupation + Stay_In_Current_City_Years + City_Category + factor(Group) + Items_Bought, data = training.data)
+reg[[5]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender + Items_Bought, data = training.data)
+reg[[6]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender+ Marital_Status + Stay_In_Current_City_Years + Occupation + Items_Bought, data = training.data)
+reg[[7]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender+ Marital_Status + Stay_In_Current_City_Years + Occupation + factor(Group) + Items_Bought, data = training.data)
+reg[[8]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender + City_Category * Age + Items_Bought, data = training.data)
+reg[[9]] =lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender+ City_Category * Age + Marital_Status + Stay_In_Current_City_Years + Occupation + Items_Bought, data = training.data)
+reg[[10]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender + City_Category * Age + Marital_Status + Stay_In_Current_City_Years + Occupation + factor(Group) + Items_Bought, data = training.data)
+reg[[11]] = lm(Total_Purchase ~ Gender + Age + Gender * Age + Items_Bought, data = training.data)
+reg[[12]] = lm(Total_Purchase ~ Gender + Age + City_Category + Gender * Age + Marital_Status + Stay_In_Current_City_Years + Occupation + Items_Bought, data = training.data)
+reg[[13]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender + City_Category * Age + Gender * Age + Marital_Status + Stay_In_Current_City_Years + Occupation + factor(Group) + Items_Bought, data = training.data)
+reg[[14]] = lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender + City_Category * Age + Gender * Age + Marital_Status + Stay_In_Current_City_Years + Occupation + factor(Group) + Items_Bought, data = training.data)
+reg[[15]] =lm(Total_Purchase ~ Gender + Age + City_Category + City_Category * Gender + City_Category * Age + Gender * Age + Marital_Status * Gender + Marital_Status * Age + Marital_Status + Stay_In_Current_City_Years + Occupation + factor(Group) + Items_Bought, data = training.data)
+
+error_model = NULL
+for (i in 1:15) {
+  error_model[i] = prediction.error(reg[[i]], validation.data)
+}
+
+data.frame(Names = c("reg1","reg2", "reg3",
+                     "reg4", "reg5", "reg6","reg7", "reg8",
+                     "reg9", "reg10", "reg11","reg12", "reg13",
+                     "reg14", "reg15"), 
+           Error = error_model)
+```
+
+**---d---**
+
+As we can see from the table, regression 15 has the lowest RMSE. Therefore, we used it as our final selected model.
+
+```{r}
+summary(reg[[15]])
+```
+
+**---e & f---**
+
+```{r, warning=FALSE}
+test.data = BFData1 %>% group_by(Gender, Age, City_Category, Marital_Status, Stay_In_Current_City_Years, Occupation, Group) %>% summarize(Items_Bought = mean(Items_Bought))
+predicted.y = predict(reg[[15]], test.data, se.fit = TRUE)
+names(predicted.y)
+head(predicted.y$fit)
+head(predicted.y$se.fit)
+```
+
+```{r}
+test.data$predicted.y = predicted.y$fit
+test.data$se.fit = predicted.y$se.fit
+test.data$upper.limit = test.data$predicted.y + qnorm(0.975)*test.data$se.fit
+test.data$lower.limit = test.data$predicted.y - qnorm(0.975)*test.data$se.fit
+```
+
+```{r}
+Age_Purchase2 = test.data %>% group_by(Age) %>% summarize(Avg_Purchase_Per_Person = mean(predicted.y), Avg_Upper = mean(upper.limit), Avg_Lower = mean(lower.limit))
+City_Purchase2 = test.data %>% group_by(City_Category) %>% summarize(Avg_Purchase_Per_Person = mean(predicted.y), Avg_Upper = mean(upper.limit), Avg_Lower = mean(lower.limit))
+Gender_Purchase2 = test.data %>% group_by(Gender) %>% summarize(Avg_Purchase_Per_Person = mean(predicted.y), Avg_Upper = mean(upper.limit), Avg_Lower = mean(lower.limit))
+Group_Purchase2 = test.data %>% group_by(Group) %>% summarize(Avg_Purchase_Per_Person = mean(predicted.y), Avg_Upper = mean(upper.limit), Avg_Lower = mean(lower.limit))
+```
+
+```{r}
+knitr::kable(Age_Purchase2)
+knitr::kable(Gender_Purchase2)
+knitr::kable(City_Purchase2)
+knitr::kable(Group_Purchase2)
+```
+
+> #### 8) Conclusion
+
+For this project, we created visualizations, performed statistical analyses, regression analyses, k-means clustering, and predictive analyses to understand customer shopping behaviors, to identify the most popular product categories, to discover the most valuable market segments, and to predict customer spending for brands and stores.
+
+First and foremost, our bar charts and box plots directly show that the stories of customers' demographic information and buying behaviors. On average, people from 26 to 35 years old spend the most (750,000 dollars on average) during Black Friday, while people older than 55 years old purchase the least. Also, people from the age group of 18-25 years old and 36-45 years old have similar purchasing power (650,000 dollars), and also are the second highest spending groups. Moreover, customers in city A and city B have stronger purchasing power than customers in city C. Next important finding from the graphs is that men on average purchase more than women in each city. The bar plots also show that there is a little difference in purchasing power between married and unmarried people during Black Friday. People with occupations 5, 16, 19 or 20 spend the most, while People with occupations 9, 10, and 13 have the least purchasing power. It is not clear if time of staying in current city has an effect on purchase. However, we can see that among the people staying in the current city for zero and two years, people from city A spend the most; among the people staying for one, three, and more than four years, people of city B in spend the most. Moreover, from the table we created, we found that product category 1 attracts the most customers and generates the highest revenue during Black Friday. These findings from the visualizations provide us with valuable insights about our dataset and give directions in analyzing the variables in the remaining parts of the project.
+
+Next, our two-sample t-tests, Spearman rank correlation test, and regression analyses helped us to confirm certain inferences and exclude particular variables we mentioned in the visualization section. By using the two-sample t-test, we found that men indeed spend more money than women during Black Friday. On the contrary, there is no significant difference in the average purchase amount between married and unmarried people; therefore, the marital status does not affect the customers' purchase regardless of cities. The Spearman rank correlation test shows a weak negative correlation between the purchase amount and age groups. Our regression analyzes also show that the brands can cut their marketing expense by focusing less in the city C. On the contrary, brands should focus to advertise products of the first and fifth product category 1 because they are the most popular one, measured by the amount of money spent by customers. By running some logistic regressions, we are also able to give brands a list of the most valuable customers of each product category.
+
+Taking the results from the previous analyses above, we applied specific post-hoc techniques (the K-means clustering) to make further segmentation for the customers by grouping people with similar purchasing power together. We found that group 5 of the groups we created is the most important one because this group has spent much more than other groups on average. Higher R-squared, lower AIC, and lower BIC also show that the model has been improved by adding the groups.
+
+Furthermore, by comparing root-mean-square error, we chose the model with the lowest RMSE as our final selected model to do predications. According to this model, we predicted that males will spend 862461 dollars, customers from city A and city B will spend 1090993 and 1011782 dollars respectively, and 26-35 years old customers will spend 935155 dollars. These are the most important groups because people of these groups who tend to spend more according to our analyses and predications. 
+
+In conclusion, based on our analysis, we confidently suggest the managers focus more on the 26 to 35-year-old male customers in city A and city B, as this group of customers has the strongest purchasing power. We have also found that product category 1 and 5 are the most popular categories and identified the most valuable
+customers for every product category. What??s more, we are also able to predict average purchase amount of major segments of the market.
+

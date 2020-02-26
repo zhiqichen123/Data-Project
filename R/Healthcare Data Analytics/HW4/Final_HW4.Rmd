@@ -1,0 +1,181 @@
+---
+title: "Appendix of Healthcare HW3"
+author: "Written by Zhiqi Chen, Nkosingiphile Shongwe, Salil Redkar, Debarati Mazumdar, Lakshmi Malavika Andavilli"
+date: "3/5/2019"
+output: word_document
+---
+
+```{r message=FALSE, warning=FALSE}
+library(readxl)
+library(tidyverse)
+library(clusterCrit)
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(RColorBrewer)
+library(readtext)
+```
+
+```{r}
+inpatient = read.delim("VTINP16_upd.TXT", sep=',')
+
+revcode = read.delim("VTREVCODE16.TXT", sep=',')
+colnames(revcode)[colnames(revcode) == 'Uniq'] = 'UNIQ'
+
+drg_name = read_excel("HS_2016VT_PUF_FILE_LAYOUT_and_CODES.xls", sheet="MSDRG 2007 forward")
+drg_name = drg_name %>%
+  select(MSDRG, MSDRG_DESC)
+colnames(drg_name)[colnames(drg_name) == 'MSDRG'] = 'DRG'
+
+PCCR_name = read_excel("HS_2016VT_REVCODE_FILE_LAYOUT_and_CODES.xls", sheet="PCCR")
+```
+
+```{r}
+inp_filter = inpatient %>%
+  filter(DRG %in% (20:977)) %>%
+  select(UNIQ, DRG)
+
+revcode = revcode %>%
+  filter(!REVCHRGS < 100) %>%
+  select(UNIQ, PCCR, REVCHRGS)
+
+inp_merge = merge(inp_filter, revcode, by = "UNIQ")
+
+inp_merge = na.omit(inp_merge)
+
+inp_merge = inp_merge %>%
+  group_by(DRG, PCCR) %>%
+  summarize(CHRGS = round(mean(REVCHRGS)))
+
+inp_merge = merge(inp_merge, drg_name, by = "DRG") %>%
+  select(c(4, 2, 3))
+
+inp_merge = merge(inp_merge, PCCR_name, by = "PCCR") %>%
+  select(c(2, 4, 3))
+
+colnames(inp_merge)[colnames(inp_merge) == 'MSDRG_DESC'] = 'DRG'
+colnames(inp_merge)[colnames(inp_merge) == 'PCCR_NAME'] = 'PCCR'
+
+ctab1 = inp_merge %>%
+  spread(PCCR, CHRGS)
+
+ctab2 = ctab1 %>%
+  mutate(PCCR_OR_and_Anesth_Costs = ctab1$`Operating Room` + ctab1$`Anesthesiology`)
+
+ctab3 = ctab2[,-1]
+rownames(ctab3) = ctab2[,1]
+
+ctab3[is.na(ctab3)] = 0
+```
+
+```{r}
+ctab4 = ctab3 %>%
+  select(PCCR_OR_and_Anesth_Costs)
+
+seg.summ <- function(data, groups) {
+  aggregate(data, list(groups), function(x) mean(as.numeric(x)))  
+}
+
+seg.df.num = model.matrix(~ PCCR_OR_and_Anesth_Costs, data = ctab4)
+
+k.max <- 10
+wss <- sapply(1:k.max, 
+              function(k){kmeans(seg.df.num, k, nstart = 50, iter.max = 20)$tot.withinss})
+
+plot(1:k.max, wss,
+     type="b", pch=19, frame=FALSE, 
+     xlab="Number of clusters K",
+     ylab="Total within-clusters sum of squares")
+
+seg.k2 <- kmeans(seg.df.num, centers=2, nstart=50, iter.max=20)
+seg.k3 <- kmeans(seg.df.num, centers=3, nstart=50, iter.max=20)
+seg.k4 <- kmeans(seg.df.num, centers=4, nstart=50, iter.max=20)
+seg.k5 <- kmeans(seg.df.num, centers=5, nstart=50, iter.max=20)
+
+k2 = intCriteria(seg.df.num, seg.k2$cluster, "Calinski_Harabasz")
+k3 = intCriteria(seg.df.num, seg.k3$cluster, "Calinski_Harabasz")
+k4 = intCriteria(seg.df.num, seg.k4$cluster, "Calinski_Harabasz")
+k5 = intCriteria(seg.df.num, seg.k5$cluster, "Calinski_Harabasz")
+
+print(paste("F-stat for 2 clusters is", k2))
+print(paste("F-stat for 3 clusters is", k3))
+print(paste("F-stat for 4 clusters is", k4))
+print(paste("F-stat for 5 clusters is", k5))
+
+f = c(1544, 1857, 2106, 2488)
+plot(2:5, f,
+     type="b", pch=19, frame=FALSE, 
+     xlab="Number of clusters K",
+     ylab="Calinski-Harabasz F-stat",
+     xlim=c(1,6),
+     ylim=c(1400, 2500))
+text(2:5, f, labels=f, pos=2)
+```
+
+```{r}
+#cluster_number = seg.k3$cluster
+#ctab4$Sorted_Cluster = cluster_number
+```
+
+```{r message=FALSE, warning=FALSE}
+# Most Frequent Words in Cluster 1
+text = readtext("cluster1.txt")
+docs = Corpus(VectorSource(text))
+docs = tm_map(docs, content_transformer(tolower))
+dtm = TermDocumentMatrix(docs)
+m = as.matrix(dtm)
+v = sort(rowSums(m), decreasing = TRUE)
+d = data.frame(word = names(v), freq = v)
+d = d[c(-1, -2), ]
+d = d[c(-2, -3), ]
+head(d, 10)
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col = "lightblue", main ="Most Frequent Words",
+        ylab = "Word Frequencies")
+```
+
+```{r message=FALSE, warning=FALSE}
+# Most Frequent Words in Cluster 2
+text = readtext("cluster2.txt")
+docs = Corpus(VectorSource(text))
+docs = tm_map(docs, content_transformer(tolower))
+dtm = TermDocumentMatrix(docs)
+m = as.matrix(dtm)
+v = sort(rowSums(m), decreasing = TRUE)
+d = data.frame(word = names(v), freq = v)
+d = d[c(-1, -3), ]
+d = d[c(-3, -4, -6, -7, -8, -10), ]
+head(d, 10)
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col = "lightblue", main ="Most Frequent Words",
+        ylab = "Word Frequencies")
+```
+
+```{r message=FALSE, warning=FALSE}
+# Most Frequent Words in Cluster 3
+text = readtext("cluster3.txt")
+docs = Corpus(VectorSource(text))
+docs = tm_map(docs, content_transformer(tolower))
+dtm = TermDocumentMatrix(docs)
+m = as.matrix(dtm)
+v = sort(rowSums(m), decreasing = TRUE)
+d = data.frame(word = names(v), freq = v)
+d = d[c(-1, -3), ]
+d = d[-3, ]
+head(d, 10)
+set.seed(1234)
+wordcloud(words = d$word, freq = d$freq, min.freq = 1,
+          max.words = 100, random.order = FALSE, rot.per = 0.35, 
+          colors = brewer.pal(8, "Dark2"))
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word,
+        col = "lightblue", main ="Most Frequent Words",
+        ylab = "Word Frequencies")
+```

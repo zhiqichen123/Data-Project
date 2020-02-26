@@ -1,0 +1,331 @@
+---
+title: "Appendix of Healthcare HW3"
+author: "Written by Zhiqi Chen, Nkosingiphile Shongwe, Salil Redkar, Debarati Mazumdar and Lakshmi Malavika Andavilli"
+date: "2/24/2019"
+output: word_document
+---
+
+## Question 1
+
+```{r message=FALSE}
+library(readxl)
+library(dplyr)
+```
+
+```{r}
+ED = read.delim("VTED16.TXT", sep = ",")
+INP = read.delim("VTINP16_upd.TXT", sep = ",")
+REV = read.delim("VTREVCODE16.TXT", sep = ",")
+REVCODE = read_excel("HS_2016VT_REVCODE_FILE_LAYOUT_and_CODES.xls", sheet = "REVCODE")
+```
+
+```{r}
+REV$REVCODE = formatC(REV$REVCODE, width=4, flag="0")
+```
+
+### 1. UNIQ = 507033
+
+```{r}
+uniq1_rev = REV %>%
+  filter(Uniq == "507033")
+uniq1_revcode = merge(uniq1_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq1_inp = INP %>%
+  filter(UNIQ == "507033")
+```
+
+### 2. UNIQ = 40436
+
+```{r}
+uniq2_rev = REV %>%
+  filter(Uniq == "40436")
+uniq2_revcode = merge(uniq2_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq2_inp = INP %>%
+  filter(UNIQ == "40436")
+```
+
+### 3. UNIQ = 859382
+
+```{r}
+uniq3_rev = REV %>%
+  filter(Uniq == "859382")
+uniq3_revcode = merge(uniq3_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq3_ed = ED %>%
+  filter(UNIQ == "859382")
+uniq3_inp = INP %>%
+  filter(UNIQ == "859382")
+```
+
+### 4. UNIQ = 1585831
+
+```{r}
+uniq4_rev = REV %>%
+  filter(Uniq == "1585831")
+uniq4_revcode = merge(uniq4_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq4_ed = ED %>%
+  filter(UNIQ == "1585831")
+uniq4_inp = INP %>%
+  filter(UNIQ == "1585831")
+```
+
+### 5. UNIQ = 200760
+
+```{r}
+uniq5_rev = REV %>%
+  filter(Uniq == "200760")
+uniq5_revcode = merge(uniq5_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq5_ed = ED %>%
+  filter(UNIQ == "200760")
+uniq5_inp = INP %>%
+  filter(UNIQ == "200760")
+```
+
+### 6. UNIQ = 3692
+
+```{r}
+uniq6_rev = REV %>%
+  filter(Uniq == "3692")
+uniq6_revcode = merge(uniq6_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq6_ed = ED %>%
+  filter(UNIQ == "3692")
+uniq6_inp = INP %>%
+  filter(UNIQ == "3692")
+```
+
+### 7. UNIQ = 690326
+
+```{r}
+uniq7_rev = REV %>%
+  filter(Uniq == "690326")
+uniq7_revcode = merge(uniq7_rev, REVCODE, by = "REVCODE", all.x = TRUE)
+uniq7_inp = INP %>%
+  filter(UNIQ == "690326")
+```
+
+## Question 2
+
+```{r,message=FALSE,warning=FALSE}
+library(readxl)
+library(tidyverse)
+library(data.table)
+library(ggplot2)
+library(grid)
+library(gridExtra)
+library(lattice)
+library(ggplotify)
+library(stringr)
+library(data.table)
+```
+
+```{r}
+# File to use
+inpatient <- read.delim("VTINP16_upd.TXT",sep=',')
+ed_vermont <- read.delim("VTED16.TXT",sep=',')
+
+# Lists of each for reference only
+drg_list <- read_excel("HS_2016VT_PUF_FILE_LAYOUT_and_CODES.xls",sheet="MSDRG 2007 forward")
+mdc_list <- read_excel("HS_2016VT_PUF_FILE_LAYOUT_and_CODES.xls",sheet="MDC")
+payer_list <- read_excel("HS_2016VT_PUF_FILE_LAYOUT_and_CODES.xls",sheet="PRINCIPAL_PAYMENT_SOURCE")
+```
+
+```{r}
+# Selecting the rows with payer that is either Medicare/Medicacid/Commerical
+ppay_reqd <- c(1,2,6,7)
+inpatient1 <- inpatient %>% filter (PPAY %in% ppay_reqd)
+
+# All the commercial players are now labelled as '3', Medicare and Medicaid are '1', '2' respectively
+inpatient1$PPAY[inpatient1$PPAY=='6' | inpatient1$PPAY =='7'] <- "3"
+```
+
+```{r}
+# Cross-tabulation 
+cross_tab <-inpatient1 %>% group_by(PPAY,MDC) %>% summarize(Cost_per_cat=sum(CHRGS)) %>% 
+spread(PPAY,Cost_per_cat)
+
+list <- c("1","2","3")
+for (i in list){
+        cross_tab[i] <- round(cross_tab[i]/(10^6), digits = 2)
+}
+
+cross_tab<-cross_tab %>% filter(!is.na(MDC))
+cross_tab<-merge(cross_tab,mdc_list, by="MDC", all.x =TRUE)
+cross_tab<- cross_tab[,c(1,5,2,3,4)]
+```
+
+```{r}
+# Demographic information
+demo_medicare = inpatient1 %>%
+  filter(PPAY=='1') %>%
+  group_by(intage,sex) %>%
+  summarise(n = n())
+demo_medicare = demo_medicare[order(-demo_medicare$n),]
+head(demo_medicare)
+
+demo_medicaid = inpatient1 %>%
+  filter(PPAY=='2') %>%
+  group_by(intage,sex) %>%
+  summarise(n = n())
+demo_medicaid = demo_medicaid[order(-demo_medicaid$n),]
+head(demo_medicaid)
+
+demo_commercial = inpatient1 %>%
+  filter(PPAY=='3') %>%
+  group_by(intage,sex) %>%
+  summarise(n = n())
+demo_commercial = demo_commercial[order(-demo_commercial$n),]
+head(demo_commercial)
+```
+
+```{r,warning=FALSE}
+# Making the pie-charts
+aa<- cross_tab %>% filter(!is.na(`1`))%>%select(MDC,MDC_CAT_NAME,`1`)%>% mutate(percentage=round((`1`/sum(`1`)*100),digits = 1)) %>% arrange(desc(percentage))
+
+pie_medicare<- aa %>% ggplot(aes(x="", y=aa$percentage, fill=factor(MDC_CAT_NAME,levels = aa$MDC_CAT_NAME))) + geom_bar(stat="identity", width=1)+ coord_polar(theta = "y", start=0,direction = -1)+
+        labs(x = NULL, y = NULL, fill = NULL, title = "MDC distribution for Medicare")
+
+pie_medicare<- pie_medicare + theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))+theme(legend.position="bottom")+
+        theme(legend.text = element_text(colour="blue", size=6))+
+        guides(fill = guide_legend(nrow = 7,byrow = TRUE))
+
+pie_medicare
+```
+
+```{r}
+aa1 = aa[order(-aa$percentage),]
+aa1 = aa1 %>%
+  select(MDC_CAT_NAME, percentage)
+head(aa1, 5)
+```
+
+```{r,warning=FALSE}
+# Making the pie-charts
+aa<- cross_tab %>% filter(!is.na(`2`))%>%select(MDC,MDC_CAT_NAME,`2`)%>% mutate(percentage=round((`2`/sum(`2`)*100),digits = 1)) %>% arrange(desc(percentage))
+
+pie_medicaid<- aa %>% ggplot(aes(x="", y=aa$percentage, fill=factor(MDC_CAT_NAME,levels = aa$MDC_CAT_NAME))) + geom_bar(stat="identity", width=1)+ coord_polar(theta = "y", start=0,direction = -1)+
+        labs(x = NULL, y = NULL, fill = NULL, title = "MDC distribution for Medicaid")
+
+pie_medicaid<- pie_medicaid + theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))+theme(legend.position="bottom")+
+        theme(legend.text = element_text(colour="blue", size=6))+
+        guides(fill = guide_legend(nrow = 8,byrow = TRUE))
+
+pie_medicaid
+```
+
+```{r}
+aa1 = aa[order(-aa$percentage),]
+aa1 = aa1 %>%
+  select(MDC_CAT_NAME, percentage)
+head(aa1, 5)
+```
+
+```{r,warning=FALSE}
+# Making the pie-charts
+aa<- cross_tab %>%filter(!is.na(`3`))%>%select(MDC,MDC_CAT_NAME,`3`)%>% mutate(percentage=round((`3`/sum(`3`)*100),digits = 1)) %>% arrange(desc(percentage))
+
+pie_commercial <- aa %>% ggplot(aes(x="", y=aa$percentage, fill=factor(MDC_CAT_NAME,levels = aa$MDC_CAT_NAME))) + geom_bar(stat="identity", width=1)+ coord_polar(theta = "y", start=0,direction = -1)+
+        labs(x = NULL, y = NULL, fill = NULL, title = "MDC distribution for Commercial Payers")
+
+pie_commercial<- pie_commercial + theme_classic() + theme(axis.line = element_blank(),
+          axis.text = element_blank(),
+          axis.ticks = element_blank(),
+          plot.title = element_text(hjust = 0.5, color = "#666666"))+theme(legend.position="bottom")+
+        theme(legend.text = element_text(colour="blue", size=6))+
+        guides(fill = guide_legend(nrow = 8,byrow = TRUE))
+
+pie_commercial
+```
+
+```{r}
+aa1 = aa[order(-aa$percentage),]
+aa1 = aa1 %>%
+  select(MDC_CAT_NAME, percentage)
+head(aa1, 5)
+```
+
+## QUESTION 3
+
+```{r}
+total_drug <- ed_vermont %>% filter_at(vars(starts_with("DX")), any_vars(str_detect(., pattern = "T40|T41|T42|T43")))
+```
+
+```{r}
+# 1. How many ED visits exactly have been diagnosed as drug user/abuser?
+nrow(total_drug)
+```
+
+```{r}
+# 2. Men vs Women
+counts<-total_drug %>% filter(!is.na(sex)) %>% group_by(sex) %>% summarize(counts=n())
+head(counts)
+```
+
+```{r}
+# 3. Money spent on the drug abusers
+m = total_drug %>%
+  summarise(Total = sum(CHRGS))
+total_amount = m[1,1]
+total_amount = total_amount/(10^6)
+total_amount = round(total_amount, digits = 2)
+print(sprintf("The total cost in millions of dollars for the identified patients is %s", total_amount))
+
+m1 <-total_drug %>%
+  filter(PPAY == "1") %>%
+  summarize(total_amount_1 = sum(CHRGS))
+total_amount_1 = m1[1,1]
+total_amount_1 = total_amount_1/(10^6)
+percent_1 = total_amount_1/total_amount*100
+percent_1 = round(percent_1, digits = 2)
+print(sprintf("The percentage share of total by Medicare is %s", percent_1))
+
+m2 <-total_drug %>%
+  filter(PPAY == "2") %>%
+  summarize(total_amount_2 = sum(CHRGS))
+total_amount_2 = m2[1,1]
+total_amount_2 = total_amount_2/(10^6)
+percent_2 = total_amount_2/total_amount*100
+percent_2 = round(percent_2, digits = 2)
+print(sprintf("The percentage share of total by Medicaid is %s", percent_2))
+
+m3 <-total_drug %>%
+  filter(PPAY == "3") %>%
+  summarize(total_amount_3 = sum(CHRGS))
+total_amount_3 = m3[1,1]
+total_amount_3 = total_amount_3/(10^6)
+percent_3 = total_amount_3/total_amount*100
+percent_3 = round(percent_3, digits = 2)
+print(sprintf("The percentage share of total by Commercial Payers is %s", percent_3))
+```
+
+```{r}
+# 4. How many of patients have been brought to ED for diagnosis related to synthetic narcotics or amphetamines?
+total_syn <- ed_vermont %>% filter_at(vars(starts_with("DX")),any_vars(str_detect(., pattern = "T404|T4362")))
+nrow(total_syn)
+```
+
+```{r}
+# 5. Name the 3 zip code regions with the highest numbers of drug use/abuse.
+zip = total_drug %>%
+  group_by(TXTZIP) %>%
+  summarise(n = n())
+zip = zip[order(-zip$n),]
+head(zip, 3)
+```
+
+```{r}
+# 6. What are the 10 most common diagnoses of drug use/abuse?
+df1 = data.frame(total_drug[, c(10:29)])
+df2 = data.frame(DX = unlist(df1, use.names = FALSE))
+df3 = df2 %>%
+  group_by(DX) %>%
+  summarise(n = n())
+df4 = df3[-1,]
+df5 = df4 %>%
+  filter(str_detect(DX, paste(c("T40","T41","T42","T43"), collapse = "|")))
+df5 = df5[order(-df5$n),]
+head(df5, 10)
+```
